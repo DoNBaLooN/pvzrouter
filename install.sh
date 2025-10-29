@@ -89,7 +89,8 @@ download_archive() {
     archive_url="${ARCHIVE_URL:-${REPO_URL%.git}/archive/${BRANCH}.tar.gz}"
 
     download_file "$archive_url" "$WORKDIR/archive.tar.gz"
-    tar -xzf "$WORKDIR/archive.tar.gz" -C "$WORKDIR/src" --strip-components=1
+    tar -xzf "$WORKDIR/archive.tar.gz" -C "$WORKDIR/src"
+    mv "$WORKDIR/src"/*/* "$WORKDIR/src"/ 2>/dev/null || true
 }
 
 clone_repo() {
