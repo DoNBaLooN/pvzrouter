@@ -5,9 +5,27 @@
 CFG_CODE="$(uci -q get wifi_auth.settings.code)"
 CFG_DURATION="$(uci -q get wifi_auth.settings.duration)"
 CFG_UPDATED="$(uci -q get wifi_auth.settings.updated)"
+CFG_ENABLED="$(uci -q get wifi_auth.settings.enabled)"
 [ -z "$CFG_CODE" ] && CFG_CODE=""
 [ -z "$CFG_DURATION" ] && CFG_DURATION="60"
 [ -z "$CFG_UPDATED" ] && CFG_UPDATED="не задано"
+[ -z "$CFG_ENABLED" ] && CFG_ENABLED="1"
+
+if [ "$CFG_ENABLED" = "1" ]; then
+    PROTECTION_STATUS_TEXT="Включена"
+    PROTECTION_STATUS_CLASS="status-tag--on"
+    PROTECTION_BUTTON_TEXT="Отключить защиту"
+    PROTECTION_BUTTON_CLASS="danger"
+    PROTECTION_NEXT_STATE="disable"
+    PROTECTION_HINT="Пользователи будут видеть страницу авторизации и вводить код."
+else
+    PROTECTION_STATUS_TEXT="Выключена"
+    PROTECTION_STATUS_CLASS="status-tag--off"
+    PROTECTION_BUTTON_TEXT="Включить защиту"
+    PROTECTION_BUTTON_CLASS="success"
+    PROTECTION_NEXT_STATE="enable"
+    PROTECTION_HINT="Гости могут подключаться к Wi‑Fi без ввода кода."
+fi
 
 SESS_FILE="/tmp/active_sessions.txt"
 if [ -s "$SESS_FILE" ]; then
@@ -195,6 +213,35 @@ Cache-Control: no-store
             color: var(--text-muted);
         }
 
+        .status-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.35rem 0.85rem;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .status-tag--on {
+            background: rgba(22, 163, 74, 0.18);
+            color: #166534;
+        }
+
+        .status-tag--off {
+            background: rgba(239, 68, 68, 0.18);
+            color: #b91c1c;
+        }
+
+        .hint {
+            margin: 0;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
         button {
             padding: 0.85rem 1.2rem;
             border-radius: 14px;
@@ -217,6 +264,11 @@ Cache-Control: no-store
 
         button.danger {
             background: linear-gradient(135deg, #fb7185 0%, var(--danger) 100%);
+            color: #fff;
+        }
+
+        button.success {
+            background: linear-gradient(135deg, #34d399 0%, #059669 100%);
             color: #fff;
         }
 
@@ -277,6 +329,18 @@ Cache-Control: no-store
             </button>
         </header>
         <main>
+            <section>
+                <h2>Защита портала</h2>
+                <div class="info-line">
+                    <strong>Статус:</strong>
+                    <span class="status-tag ${PROTECTION_STATUS_CLASS}">${PROTECTION_STATUS_TEXT}</span>
+                </div>
+                <p class="hint">${PROTECTION_HINT}</p>
+                <form method="post" action="/cgi-bin/toggle_protection.sh">
+                    <input type="hidden" name="state" value="${PROTECTION_NEXT_STATE}">
+                    <button class="${PROTECTION_BUTTON_CLASS}" type="submit">${PROTECTION_BUTTON_TEXT}</button>
+                </form>
+            </section>
             <section>
                 <h2>Код доступа</h2>
                 <form method="post" action="/cgi-bin/update_code.sh">
