@@ -14,18 +14,187 @@ CRON_FILE="/etc/crontabs/root"
 SESS_FILE="/tmp/active_sessions.txt"
 LOCK_DIR="/var/lock"
 
+PKG_MANAGER=""
+PKG_IS_APK=0
+PKG_REFRESHED=0
+
+if command -v apk >/dev/null 2>&1; then
+    PKG_MANAGER="apk"
+    PKG_IS_APK=1
+elif command -v opkg >/dev/null 2>&1; then
+    PKG_MANAGER="opkg"
+fi
+
+msg() {
+    printf '\033[32;1m%s\033[0m\n' "$1"
+}
+
+warn() {
+    printf '\033[33;1m%s\033[0m\n' "$1" >&2
+}
+
+err() {
+    printf '\033[31;1m%s\033[0m\n' "$1" >&2
+    exit 1
+}
+
+pkg_is_installed() {
+    [ -n "$PKG_MANAGER" ] || return 1
+    local pkg="$1"
+
+    case "$PKG_MANAGER" in
+        apk)
+            apk info -e "$pkg" >/dev/null 2>&1
+            ;;
+        opkg)
+            opkg status "$pkg" >/dev/null 2>&1
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+pkg_update() {
+    [ -n "$PKG_MANAGER" ] || return 0
+    if [ "$PKG_REFRESHED" -eq 1 ]; then
+        return 0
+    fi
+
+    case "$PKG_MANAGER" in
+        apk)
+            msg "Обновляю списки пакетов apk..."
+            if ! apk update >/dev/null 2>&1; then
+                warn "Не удалось обновить списки пакетов apk."
+            fi
+            ;;
+        opkg)
+            msg "Обновляю списки пакетов opkg..."
+            if ! opkg update >/dev/null 2>&1; then
+                warn "Не удалось обновить списки пакетов opkg."
+            fi
+            ;;
+    esac
+
+    PKG_REFRESHED=1
+}
+
+pkg_install() {
+    [ -n "$PKG_MANAGER" ] || return 1
+    local pkg="$1"
+
+    if pkg_is_installed "$pkg"; then
+        return 0
+    fi
+
+    case "$PKG_MANAGER" in
+        apk)
+            if ! apk add "$pkg" >/dev/null 2>&1; then
+                err "Не удалось установить пакет '$pkg' через apk."
+            fi
+            ;;
+        opkg)
+            if ! opkg install "$pkg" >/dev/null 2>&1; then
+                err "Не удалось установить пакет '$pkg' через opkg."
+            fi
+            ;;
+    esac
+}
+
+check_network() {
+    [ "${USE_LOCAL_SOURCE:-0}" = "1" ] && return 0
+
+    if command -v nslookup >/dev/null 2>&1; then
+        if ! nslookup openwrt.org >/dev/null 2>&1; then
+            err "DNS не отвечает. Проверьте подключение к интернету."
+        fi
+        return 0
+    fi
+
+    if command -v ping >/dev/null 2>&1; then
+        if ! ping -c 1 -W 3 8.8.8.8 >/dev/null 2>&1; then
+            err "Не удалось проверить соединение с интернетом (ping 8.8.8.8)."
+        fi
+        return 0
+    fi
+
+    warn "Не найдено nslookup или ping для проверки сети. Пропускаю проверку."
+}
+
+check_system() {
+    if [ -r /tmp/sysinfo/model ]; then
+        msg "Маршрутизатор: $(cat /tmp/sysinfo/model)"
+    fi
+
+    if [ -r /etc/openwrt_release ]; then
+        local release major
+        release=$(grep "^DISTRIB_RELEASE" /etc/openwrt_release | cut -d"'" -f2)
+        [ -n "$release" ] && msg "Версия OpenWrt: $release"
+        major=$(printf '%s' "$release" | cut -d'.' -f1)
+        if [ -n "$major" ] && [ "$major" -lt 24 ]; then
+            err "Требуется OpenWrt версии 24.10 или новее."
+        fi
+        case "$release" in
+            23.*)
+                err "OpenWrt 23.x не поддерживается."
+                ;;
+        esac
+    else
+        warn "Не удалось определить версию OpenWrt."
+    fi
+
+    if df /overlay >/dev/null 2>&1; then
+        local available required
+        available=$(df /overlay | awk 'NR==2 {print $4}')
+        required=4096
+        if [ -n "$available" ] && [ "$available" -lt "$required" ]; then
+            err "Недостаточно свободного места во флеше (нужно ~4 МБ)."
+        fi
+    else
+        warn "Не удалось проверить свободное место на разделе overlay."
+    fi
+
+    check_network
+}
+
+ensure_dependencies() {
+    local required_packages=""
+
+    if ! command -v uhttpd >/dev/null 2>&1 && [ ! -x /etc/init.d/uhttpd ]; then
+        required_packages="$required_packages uhttpd"
+    fi
+
+    if ! command -v nodogsplash >/dev/null 2>&1 && \
+       ! command -v nodogsplashctl >/dev/null 2>&1 && \
+       [ ! -x /etc/init.d/nodogsplash ]; then
+        required_packages="$required_packages nodogsplash"
+    fi
+
+    if [ -z "$required_packages" ]; then
+        return 0
+    fi
+
+    if [ -z "$PKG_MANAGER" ]; then
+        warn "Не удалось определить пакетный менеджер. Установите вручную: $required_packages"
+        return 0
+    fi
+
+    pkg_update
+    for pkg in $required_packages; do
+        pkg_install "$pkg"
+    done
+}
+
 require_root() {
     if [ "$(id -u)" != "0" ]; then
-        echo "[!] Запустите установку от имени root." >&2
-        exit 1
+        err "Запустите установку от имени root."
     fi
 }
 
 require_tool() {
     local tool="$1"
     if ! command -v "$tool" >/dev/null 2>&1; then
-        echo "[!] Требуется установить утилиту '$tool'." >&2
-        exit 1
+        err "Требуется установить утилиту '$tool'."
     fi
 }
 
@@ -72,16 +241,15 @@ download_file() {
     fi
 
     if [ "$tried" -eq 0 ]; then
-        echo "[!] Не найден ни один из загрузчиков: curl, wget или uclient-fetch." >&2
+        err "Не найден ни один из загрузчиков: curl, wget или uclient-fetch."
     else
-        echo "[!] Не удалось загрузить '$url'." >&2
+        err "Не удалось загрузить '$url'."
     fi
-    exit 1
 }
 
 download_archive() {
     require_tool tar
-    echo "[*] Загружаю архив репозитория..."
+    msg "Загружаю архив репозитория..."
     rm -rf "$WORKDIR/src"
     mkdir -p "$WORKDIR/src"
 
@@ -103,16 +271,14 @@ clone_repo() {
         clone_url="$(build_clone_url "$REPO_URL")"
         if ! GIT_TERMINAL_PROMPT=0 git clone --depth 1 --branch "$BRANCH" "$clone_url" "$WORKDIR/src" >/dev/null 2>&1; then
             if [ -n "${GIT_TOKEN:-}" ]; then
-                echo "[!] Не удалось клонировать репозиторий. Проверьте URL и доступ (токен)." >&2
-                exit 1
+                err "Не удалось клонировать репозиторий. Проверьте URL и доступ (токен)."
             fi
-            echo "[!] Не удалось выполнить git clone. Перехожу к загрузке архива." >&2
+            warn "Не удалось выполнить git clone. Перехожу к загрузке архива."
             download_archive
         fi
     else
         if [ -n "${GIT_TOKEN:-}" ]; then
-            echo "[!] Для установки из приватного репозитория требуется наличие git на устройстве." >&2
-            exit 1
+            err "Для установки из приватного репозитория требуется наличие git на устройстве."
         fi
         download_archive
     fi
@@ -122,8 +288,7 @@ prepare_local_source() {
     local src
     src="${SOURCE_DIR:-$SCRIPT_DIR}"
     if [ ! -d "$src" ]; then
-        echo "[!] Локальная директория с исходниками '$src' не найдена." >&2
-        exit 1
+        err "Локальная директория с исходниками '$src' не найдена."
     fi
 
     rm -rf "$WORKDIR"
@@ -140,6 +305,7 @@ prepare_source() {
 }
 
 install_files() {
+    msg "Копирую файлы портала..."
     mkdir -p "$WWW_DST" "$CGI_DST" "$LOCK_DIR"
     cp -a "$WORKDIR/src/www/." "$WWW_DST/"
     touch "$SESS_FILE"
@@ -152,6 +318,7 @@ install_files() {
 }
 
 setup_config() {
+    msg "Настраиваю конфигурацию wifi_auth..."
     if ! uci -q show wifi_auth.settings >/dev/null 2>&1; then
         uci set wifi_auth.settings=auth
     fi
@@ -174,6 +341,7 @@ setup_config() {
 }
 
 setup_cron() {
+    msg "Обновляю задания cron..."
     touch "$CRON_FILE"
     if ! grep -q "session_check.sh" "$CRON_FILE"; then
         echo "*/5 * * * * /www/cgi-bin/session_check.sh >/dev/null 2>&1" >> "$CRON_FILE"
@@ -182,6 +350,7 @@ setup_cron() {
 }
 
 finalize() {
+    msg "Перезапускаю веб-интерфейс и портал..."
     if [ -x /etc/init.d/uhttpd ]; then
         /etc/init.d/uhttpd reload >/dev/null 2>&1 || true
     fi
@@ -195,10 +364,16 @@ finalize() {
 MSG
 }
 
-require_root
-require_tool uci
-prepare_source
-install_files
-setup_config
-setup_cron
-finalize
+main() {
+    require_root
+    require_tool uci
+    check_system
+    ensure_dependencies
+    prepare_source
+    install_files
+    setup_config
+    setup_cron
+    finalize
+}
+
+main "$@"
