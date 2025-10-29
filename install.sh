@@ -89,7 +89,9 @@ download_archive() {
     archive_url="${ARCHIVE_URL:-${REPO_URL%.git}/archive/${BRANCH}.tar.gz}"
 
     download_file "$archive_url" "$WORKDIR/archive.tar.gz"
+    # BusyBox tar не поддерживает --strip-components, поэтому распаковываем полностью
     tar -xzf "$WORKDIR/archive.tar.gz" -C "$WORKDIR/src"
+    # Переносим содержимое из вложенной директории (pvzrouter-main/*) в src/
     mv "$WORKDIR/src"/*/* "$WORKDIR/src"/ 2>/dev/null || true
 }
 
