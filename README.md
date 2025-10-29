@@ -43,22 +43,25 @@
 - NoDogSplash обрабатывает подключения на интерфейсе `br-lan`
 
 ## Установка на OpenWrt 24.10.0
-1. Подключитесь к роутеру по SSH и убедитесь, что есть выход в интернет для загрузки репозитория.
-2. Запустите установку (по умолчанию используется ветка `main` GitHub-репозитория `DoNBaLooN/pvzrouter`):
+1. Скопируйте архив репозитория (например, `pvzrouter.tar.gz`) в каталог `/root` на роутере.
+2. Распакуйте архив и перейдите в директорию проекта:
    ```sh
-   curl -fsSL https://raw.githubusercontent.com/DoNBaLooN/pvzrouter/main/install.sh | sh
+   cd /root
+   tar -xzf pvzrouter.tar.gz
+   cd pvzrouter
    ```
-   При необходимости можно указать свою вилку/ветку:
+   > Если внутри архива находится папка вроде `pvzrouter-main`, переименуйте её: `mv pvzrouter-main pvzrouter`.
+3. Запустите установщик, используя локальные файлы:
    ```sh
-   REPO_URL=https://github.com/<user>/pvzrouter.git BRANCH=my-branch sh install.sh
+   USE_LOCAL_SOURCE=1 sh install.sh
    ```
-   Для приватных репозиториев добавьте переменные с токеном доступа (требуется установленный `git`):
+   При необходимости можно указать другой путь к распакованному каталогу:
    ```sh
-   GIT_TOKEN=<github_pat> GIT_USERNAME=<github_login> \
-     REPO_URL=https://github.com/<user>/pvzrouter.git sh install.sh
+   USE_LOCAL_SOURCE=1 SOURCE_DIR=/root/pvzrouter-backup sh install.sh
    ```
-3. Скрипт выполняет:
-   - загрузку проекта из GitHub;
+   Скрипт также поддерживает онлайн-установку (скачивание с GitHub) при запуске без `USE_LOCAL_SOURCE=1`.
+4. Скрипт выполняет:
+   - подготовку файлов проекта (из локального каталога или из GitHub);
    - копирование HTML/CGI-файлов в `/www`;
    - настройку `/etc/config/wifi_auth` через `uci` (с сохранением текущих значений, если они уже существуют);
    - создание файла `/tmp/active_sessions.txt` и установку прав;

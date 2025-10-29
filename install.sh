@@ -2,9 +2,11 @@
 
 set -eu
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_URL="${REPO_URL:-https://github.com/DoNBaLooN/pvzrouter.git}"
 BRANCH="${BRANCH:-main}"
 WORKDIR="${WORKDIR:-/tmp/pvzrouter-install}"
+SOURCE_DIR="${SOURCE_DIR:-}"
 WWW_DST="/www"
 CGI_DST="/www/cgi-bin"
 CONFIG_DST="/etc/config/wifi_auth"
@@ -70,6 +72,27 @@ clone_repo() {
     fi
 }
 
+prepare_local_source() {
+    local src
+    src="${SOURCE_DIR:-$SCRIPT_DIR}"
+    if [ ! -d "$src" ]; then
+        echo "[!] Локальная директория с исходниками '$src' не найдена." >&2
+        exit 1
+    fi
+
+    rm -rf "$WORKDIR"
+    mkdir -p "$WORKDIR/src"
+    cp -R "$src"/. "$WORKDIR/src/"
+}
+
+prepare_source() {
+    if [ "${USE_LOCAL_SOURCE:-0}" = "1" ]; then
+        prepare_local_source
+    else
+        clone_repo
+    fi
+}
+
 install_files() {
     mkdir -p "$WWW_DST" "$CGI_DST" "$LOCK_DIR"
     cp -a "$WORKDIR/src/www/." "$WWW_DST/"
@@ -128,7 +151,7 @@ MSG
 
 require_root
 require_tool uci
-clone_repo
+prepare_source
 install_files
 setup_config
 setup_cron
