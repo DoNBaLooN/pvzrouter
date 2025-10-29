@@ -319,25 +319,31 @@ install_files() {
 
 setup_config() {
     msg "Настраиваю конфигурацию wifi_auth..."
+    # 1) Гарантируем наличие файла конфига
+    if [ ! -f "$CONFIG_DST" ]; then
+        : > "$CONFIG_DST"
+    fi
+
+    # 2) Гарантируем наличие секции 'settings' типа 'auth'
     if ! uci -q show wifi_auth.settings >/dev/null 2>&1; then
-        uci set wifi_auth.settings=auth
+        # Добавляем секцию типа auth и переименовываем её в 'settings'
+        uci -q add wifi_auth auth >/dev/null 2>&1 || true
+        # Последняя добавленная секция: @auth[-1]
+        uci -q rename wifi_auth.@auth[-1]=settings >/dev/null 2>&1 || true
     fi
 
-    if [ -f "$CONFIG_DST" ]; then
-        CODE="$(uci -q get wifi_auth.settings.code 2>/dev/null || echo '5921')"
-        DURATION="$(uci -q get wifi_auth.settings.duration 2>/dev/null || echo '60')"
-        ENABLED="$(uci -q get wifi_auth.settings.enabled 2>/dev/null || echo '1')"
-    else
-        CODE='5921'
-        DURATION='60'
-        ENABLED='0'
-    fi
+    # 3) Читаем существующие значения или подставляем дефолты
+    CODE="$(uci -q get wifi_auth.settings.code 2>/dev/null || echo '5921')"
+    DURATION="$(uci -q get wifi_auth.settings.duration 2>/dev/null || echo '60')"
+    # По умолчанию включаем портал (1), если уже было значение — сохраняем его
+    ENABLED="$(uci -q get wifi_auth.settings.enabled 2>/dev/null || echo '1')"
 
-    uci set wifi_auth.settings.code="${CODE}"
-    uci set wifi_auth.settings.duration="${DURATION}"
-    uci set wifi_auth.settings.enabled="${ENABLED}"
-    uci set wifi_auth.settings.updated="$(date '+%Y-%m-%d %H:%M')"
-    uci commit wifi_auth
+    # 4) Записываем опции
+    uci -q set wifi_auth.settings.code="${CODE}"
+    uci -q set wifi_auth.settings.duration="${DURATION}"
+    uci -q set wifi_auth.settings.enabled="${ENABLED}"
+    uci -q set wifi_auth.settings.updated="$(date '+%Y-%m-%d %H:%M')"
+    uci -q commit wifi_auth
 }
 
 setup_cron() {
