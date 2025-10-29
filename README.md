@@ -52,6 +52,11 @@
    ```sh
    REPO_URL=https://github.com/<user>/pvzrouter.git BRANCH=my-branch sh install.sh
    ```
+   Для приватных репозиториев добавьте переменные с токеном доступа (требуется установленный `git`):
+   ```sh
+   GIT_TOKEN=<github_pat> GIT_USERNAME=<github_login> \
+     REPO_URL=https://github.com/<user>/pvzrouter.git sh install.sh
+   ```
 3. Скрипт выполняет:
    - загрузку проекта из GitHub;
    - копирование HTML/CGI-файлов в `/www`;

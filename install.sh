@@ -27,12 +27,31 @@ require_tool() {
     fi
 }
 
+build_clone_url() {
+    local url="$1"
+    if [ -n "${GIT_TOKEN:-}" ] && printf '%s' "$url" | grep -q '^https://'; then
+        local user="${GIT_USERNAME:-oauth2}"
+        printf '%s' "$url" | sed "s#https://#https://${user}:${GIT_TOKEN}@#"
+        return
+    fi
+    printf '%s' "$url"
+}
+
 clone_repo() {
     rm -rf "$WORKDIR"
     mkdir -p "$WORKDIR"
     if command -v git >/dev/null 2>&1; then
-        git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$WORKDIR/src" >/dev/null
+        local clone_url
+        clone_url="$(build_clone_url "$REPO_URL")"
+        if ! GIT_TERMINAL_PROMPT=0 git clone --depth 1 --branch "$BRANCH" "$clone_url" "$WORKDIR/src" >/dev/null 2>&1; then
+            echo "[!] Не удалось клонировать репозиторий. Проверьте URL и доступ (токен)." >&2
+            exit 1
+        fi
     else
+        if [ -n "${GIT_TOKEN:-}" ]; then
+            echo "[!] Для установки из приватного репозитория требуется наличие git на устройстве." >&2
+            exit 1
+        fi
         require_tool wget
         require_tool tar
         echo "[*] git недоступен, загружаю архив..."
