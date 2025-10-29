@@ -62,13 +62,16 @@ setup_config() {
     if [ -f "$CONFIG_DST" ]; then
         CODE="$(uci -q get wifi_auth.settings.code 2>/dev/null || echo '5921')"
         DURATION="$(uci -q get wifi_auth.settings.duration 2>/dev/null || echo '60')"
+        ENABLED="$(uci -q get wifi_auth.settings.enabled 2>/dev/null || echo '1')"
     else
         CODE='5921'
         DURATION='60'
+        ENABLED='0'
     fi
 
     uci set wifi_auth.settings.code="${CODE}"
     uci set wifi_auth.settings.duration="${DURATION}"
+    uci set wifi_auth.settings.enabled="${ENABLED}"
     uci set wifi_auth.settings.updated="$(date '+%Y-%m-%d %H:%M')"
     uci commit wifi_auth
 }

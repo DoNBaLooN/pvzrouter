@@ -4,6 +4,7 @@ set -eu
 
 CONFIG_CODE="$(uci -q get wifi_auth.settings.code 2>/dev/null || echo '')"
 CONFIG_DURATION="$(uci -q get wifi_auth.settings.duration 2>/dev/null || echo '60')"
+CONFIG_ENABLED="$(uci -q get wifi_auth.settings.enabled 2>/dev/null || echo '1')"
 SESS_FILE="/tmp/active_sessions.txt"
 LOCK_FILE="/var/lock/wifi_auth_sessions.lock"
 LOCK_HELD=0
@@ -127,6 +128,23 @@ release_lock() {
 
 main() {
     read_post
+    identify_client
+
+    if [ -z "$CLIENT_MAC" ]; then
+        if [ -n "$CLIENT_IP" ]; then
+            CLIENT_MAC="unknown-$(printf '%s' "$CLIENT_IP" | tr '.:' '-')"
+        else
+            CLIENT_MAC="unknown"
+        fi
+    fi
+
+    if [ "${CONFIG_ENABLED}" != "1" ]; then
+        if command -v nodogsplashctl >/dev/null 2>&1; then
+            nodogsplashctl allow "$CLIENT_MAC" >/dev/null 2>&1 || true
+        fi
+        serve_success
+    fi
+
     INPUT_CODE="$(extract_param "code")"
     [ -z "$INPUT_CODE" ] && error_page "Не указан код доступа."
     [ -z "$CONFIG_CODE" ] && error_page "Код не настроен. Обратитесь к администратору."
@@ -142,12 +160,6 @@ main() {
 
     NOW=$(date +%s)
     EXPIRES=$((NOW + DURATION_MIN * 60))
-
-    identify_client
-
-    if [ -z "$CLIENT_MAC" ]; then
-        CLIENT_MAC="unknown-$(printf '%s' "$CLIENT_IP" | tr '.:' '-')"
-    fi
 
     if command -v nodogsplashctl >/dev/null 2>&1; then
         nodogsplashctl allow "$CLIENT_MAC" >/dev/null 2>&1 || true

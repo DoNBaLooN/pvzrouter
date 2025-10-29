@@ -5,6 +5,9 @@ LOCK_FILE="/var/lock/wifi_auth_sessions.lock"
 NOW=$(date +%s)
 TMP_FILE="${SESS_FILE}.tmp"
 LOCK_HELD=0
+CONFIG_ENABLED="$(uci -q get wifi_auth.settings.enabled 2>/dev/null || echo '1')"
+
+[ "$CONFIG_ENABLED" = "1" ] || exit 0
 
 [ -f "$SESS_FILE" ] || exit 0
 
