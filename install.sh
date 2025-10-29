@@ -37,6 +37,16 @@ build_clone_url() {
     printf '%s' "$url"
 }
 
+download_archive() {
+    require_tool wget
+    require_tool tar
+    echo "[*] Загружаю архив репозитория..."
+    rm -rf "$WORKDIR/src"
+    wget -qO "$WORKDIR/archive.tar.gz" "${REPO_URL%.git}/archive/${BRANCH}.tar.gz"
+    mkdir -p "$WORKDIR/src"
+    tar -xzf "$WORKDIR/archive.tar.gz" -C "$WORKDIR/src" --strip-components=1
+}
+
 clone_repo() {
     rm -rf "$WORKDIR"
     mkdir -p "$WORKDIR"
@@ -44,20 +54,19 @@ clone_repo() {
         local clone_url
         clone_url="$(build_clone_url "$REPO_URL")"
         if ! GIT_TERMINAL_PROMPT=0 git clone --depth 1 --branch "$BRANCH" "$clone_url" "$WORKDIR/src" >/dev/null 2>&1; then
-            echo "[!] Не удалось клонировать репозиторий. Проверьте URL и доступ (токен)." >&2
-            exit 1
+            if [ -n "${GIT_TOKEN:-}" ]; then
+                echo "[!] Не удалось клонировать репозиторий. Проверьте URL и доступ (токен)." >&2
+                exit 1
+            fi
+            echo "[!] Не удалось выполнить git clone. Перехожу к загрузке архива." >&2
+            download_archive
         fi
     else
         if [ -n "${GIT_TOKEN:-}" ]; then
             echo "[!] Для установки из приватного репозитория требуется наличие git на устройстве." >&2
             exit 1
         fi
-        require_tool wget
-        require_tool tar
-        echo "[*] git недоступен, загружаю архив..."
-        wget -qO "$WORKDIR/archive.tar.gz" "${REPO_URL%.git}/archive/${BRANCH}.tar.gz"
-        mkdir -p "$WORKDIR/src"
-        tar -xzf "$WORKDIR/archive.tar.gz" -C "$WORKDIR/src" --strip-components=1
+        download_archive
     fi
 }
 
