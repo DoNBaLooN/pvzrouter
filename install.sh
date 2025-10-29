@@ -2,7 +2,7 @@
 
 set -eu
 
-REPO_URL="${REPO_URL:-https://github.com/VlessWB/pvzrouter.git}"
+REPO_URL="${REPO_URL:-https://github.com/DoNBaLooN/pvzrouter.git}"
 BRANCH="${BRANCH:-main}"
 WORKDIR="${WORKDIR:-/tmp/pvzrouter-install}"
 WWW_DST="/www"
