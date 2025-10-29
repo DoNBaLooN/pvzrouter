@@ -44,7 +44,7 @@
 
 ## Установка на OpenWrt 24.10.0
 1. Подключитесь к роутеру по SSH и убедитесь, что есть выход в интернет для загрузки репозитория.
-2. Запустите установку (по умолчанию используется ветка `main` GitHub-репозитория `VlessWB/pvzrouter`):
+2. Запустите установку (по умолчанию используется ветка `main` GitHub-репозитория `DoNBaLooN/pvzrouter`):
    ```sh
    curl -fsSL https://raw.githubusercontent.com/DoNBaLooN/pvzrouter/main/install.sh | sh
    ```
