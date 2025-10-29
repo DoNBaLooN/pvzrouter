@@ -1,0 +1,104 @@
+#!/bin/sh
+
+set -eu
+
+REPO_URL="${REPO_URL:-https://github.com/VlessWB/pvzrouter.git}"
+BRANCH="${BRANCH:-main}"
+WORKDIR="${WORKDIR:-/tmp/pvzrouter-install}"
+WWW_DST="/www"
+CGI_DST="/www/cgi-bin"
+CONFIG_DST="/etc/config/wifi_auth"
+CRON_FILE="/etc/crontabs/root"
+SESS_FILE="/tmp/active_sessions.txt"
+LOCK_DIR="/var/lock"
+
+require_root() {
+    if [ "$(id -u)" != "0" ]; then
+        echo "[!] Запустите установку от имени root." >&2
+        exit 1
+    fi
+}
+
+require_tool() {
+    local tool="$1"
+    if ! command -v "$tool" >/dev/null 2>&1; then
+        echo "[!] Требуется установить утилиту '$tool'." >&2
+        exit 1
+    fi
+}
+
+clone_repo() {
+    rm -rf "$WORKDIR"
+    mkdir -p "$WORKDIR"
+    if command -v git >/dev/null 2>&1; then
+        git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$WORKDIR/src" >/dev/null
+    else
+        require_tool wget
+        require_tool tar
+        echo "[*] git недоступен, загружаю архив..."
+        wget -qO "$WORKDIR/archive.tar.gz" "${REPO_URL%.git}/archive/${BRANCH}.tar.gz"
+        mkdir -p "$WORKDIR/src"
+        tar -xzf "$WORKDIR/archive.tar.gz" -C "$WORKDIR/src" --strip-components=1
+    fi
+}
+
+install_files() {
+    mkdir -p "$WWW_DST" "$CGI_DST" "$LOCK_DIR"
+    cp -a "$WORKDIR/src/www/." "$WWW_DST/"
+    touch "$SESS_FILE"
+    chmod 644 "$SESS_FILE"
+    for script in "$CGI_DST"/*.sh; do
+        [ -e "$script" ] || continue
+        chmod 755 "$script"
+    done
+    [ -e "$WWW_DST/admin.html" ] && chmod 755 "$WWW_DST/admin.html"
+}
+
+setup_config() {
+    if ! uci -q show wifi_auth.settings >/dev/null 2>&1; then
+        uci set wifi_auth.settings=auth
+    fi
+
+    if [ -f "$CONFIG_DST" ]; then
+        CODE="$(uci -q get wifi_auth.settings.code 2>/dev/null || echo '5921')"
+        DURATION="$(uci -q get wifi_auth.settings.duration 2>/dev/null || echo '60')"
+    else
+        CODE='5921'
+        DURATION='60'
+    fi
+
+    uci set wifi_auth.settings.code="${CODE}"
+    uci set wifi_auth.settings.duration="${DURATION}"
+    uci set wifi_auth.settings.updated="$(date '+%Y-%m-%d %H:%M')"
+    uci commit wifi_auth
+}
+
+setup_cron() {
+    touch "$CRON_FILE"
+    if ! grep -q "session_check.sh" "$CRON_FILE"; then
+        echo "*/5 * * * * /www/cgi-bin/session_check.sh >/dev/null 2>&1" >> "$CRON_FILE"
+        /etc/init.d/cron restart >/dev/null 2>&1 || true
+    fi
+}
+
+finalize() {
+    if [ -x /etc/init.d/uhttpd ]; then
+        /etc/init.d/uhttpd reload >/dev/null 2>&1 || true
+    fi
+    if [ -x /etc/init.d/nodogsplash ]; then
+        /etc/init.d/nodogsplash restart >/dev/null 2>&1 || true
+    fi
+    cat <<MSG
+[+] Установка завершена.
+    Портал доступен по адресу: http://10.0.0.1/
+    Админ-панель: http://10.0.0.1/admin.html (рекомендуется защитить Basic Auth).
+MSG
+}
+
+require_root
+require_tool uci
+clone_repo
+install_files
+setup_config
+setup_cron
+finalize
