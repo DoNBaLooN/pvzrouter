@@ -39,13 +39,56 @@ build_clone_url() {
     printf '%s' "$url"
 }
 
+download_file() {
+    local url="$1"
+    local dest="$2"
+    local tried=0
+
+    if command -v curl >/dev/null 2>&1; then
+        tried=1
+        if curl -fsSL "$url" -o "$dest"; then
+            return 0
+        fi
+    fi
+
+    if command -v wget >/dev/null 2>&1; then
+        tried=1
+        if wget -qO "$dest" "$url"; then
+            return 0
+        fi
+        if wget --no-check-certificate -qO "$dest" "$url"; then
+            return 0
+        fi
+    fi
+
+    if command -v uclient-fetch >/dev/null 2>&1; then
+        tried=1
+        if uclient-fetch -q -O "$dest" "$url"; then
+            return 0
+        fi
+        if uclient-fetch --no-check-certificate -q -O "$dest" "$url"; then
+            return 0
+        fi
+    fi
+
+    if [ "$tried" -eq 0 ]; then
+        echo "[!] Не найден ни один из загрузчиков: curl, wget или uclient-fetch." >&2
+    else
+        echo "[!] Не удалось загрузить '$url'." >&2
+    fi
+    exit 1
+}
+
 download_archive() {
-    require_tool wget
     require_tool tar
     echo "[*] Загружаю архив репозитория..."
     rm -rf "$WORKDIR/src"
-    wget -qO "$WORKDIR/archive.tar.gz" "${REPO_URL%.git}/archive/${BRANCH}.tar.gz"
     mkdir -p "$WORKDIR/src"
+
+    local archive_url
+    archive_url="${ARCHIVE_URL:-${REPO_URL%.git}/archive/${BRANCH}.tar.gz}"
+
+    download_file "$archive_url" "$WORKDIR/archive.tar.gz"
     tar -xzf "$WORKDIR/archive.tar.gz" -C "$WORKDIR/src" --strip-components=1
 }
 

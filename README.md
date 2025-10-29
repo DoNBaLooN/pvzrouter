@@ -48,12 +48,17 @@
 На устройстве с доступом в интернет достаточно одной команды:
 
 ```sh
-sh <(wget -O - https://raw.githubusercontent.com/DoNBaLooN/pvzrouter/main/bootstrap.sh)
+wget -qO- https://raw.githubusercontent.com/DoNBaLooN/pvzrouter/main/install.sh | sh
 ```
 
-Скрипт `bootstrap.sh` скачает актуальный `install.sh` из репозитория и запустит его. При необходимости можно настроить переменные окружения перед выполнением (например, `BRANCH`, `REPO_URL`, `WORKDIR`).
+Можно использовать `curl` или `uclient-fetch` — достаточно вывести содержимое на стандартный ввод `sh`:
 
-> На системах без поддержки конструкции `<( )` (например, BusyBox `ash`) используйте конвейер: `wget -O - …/bootstrap.sh | sh`.
+```sh
+curl -fsSL https://raw.githubusercontent.com/DoNBaLooN/pvzrouter/main/install.sh | sh
+uclient-fetch -q -O- https://raw.githubusercontent.com/DoNBaLooN/pvzrouter/main/install.sh | sh
+```
+
+Перед запуском допускается задать переменные окружения (например, `BRANCH`, `REPO_URL`, `WORKDIR`, `ARCHIVE_URL`).
 
 ### Установка из локального архива
 1. Скопируйте архив репозитория (например, `pvzrouter.tar.gz`) в каталог `/root` на роутере.
