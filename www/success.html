@@ -2,19 +2,102 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Доступ предоставлен</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #e6f7ff; color: #0b5394; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-width: 400px; width: 100%; text-align: center; }
-        h1 { font-size: 1.6rem; margin-bottom: 1rem; }
-        p { margin: 0.5rem 0; }
+        :root {
+            --bg-gradient: radial-gradient(circle at 20% 20%, #e3f8ff 0%, #f2fcff 40%, #fefeff 100%);
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --primary: #0ea5e9;
+            --primary-dark: #0284c7;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: rgba(14, 165, 233, 0.2);
+            --shadow: 0 20px 35px rgba(14, 165, 233, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            background: var(--bg-gradient);
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            color: var(--text-main);
+        }
+
+        .card {
+            width: min(480px, 100%);
+            background: var(--card-bg);
+            border-radius: 26px;
+            padding: clamp(1.75rem, 4vw, 2.8rem);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        h1 {
+            margin: 0 0 0.75rem;
+            font-size: clamp(1.8rem, 4vw, 2.3rem);
+            color: var(--primary-dark);
+            letter-spacing: -0.01em;
+        }
+
+        p {
+            margin: 0.6rem 0;
+            font-size: 1rem;
+            color: var(--text-muted);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.2rem;
+            background: rgba(14, 165, 233, 0.15);
+            border-radius: 999px;
+            font-weight: 600;
+            color: var(--primary-dark);
+            margin-bottom: 1.5rem;
+        }
+
+        .badge::before {
+            content: '✔';
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 1.35rem;
+            height: 1.35rem;
+            border-radius: 50%;
+            background: var(--primary);
+            color: #fff;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 1.2rem;
+            }
+
+            .card {
+                border-radius: 22px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="card">
+        <div class="badge">Доступ открыт</div>
         <h1>Успешная авторизация!</h1>
-        <p>Доступ к интернету открыт на установленный период.</p>
-        <p>Приятного пользования Wi‑Fi.</p>
+        <p>Доступ к интернету активирован на установленный период.</p>
+        <p>Приятного пользования Wi‑Fi и хорошего дня!</p>
     </div>
 </body>
 </html>
