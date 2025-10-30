@@ -5,7 +5,22 @@ set -eu
 CONFIG="wifi_auth.portal"
 LOG_TAG="wifi_auth"
 
-read -r body
+read_cgi_body() {
+  local method="${REQUEST_METHOD:-GET}"
+  if [ "$method" = "POST" ]; then
+    if [ -n "${CONTENT_LENGTH:-}" ]; then
+      dd bs=1 count="$CONTENT_LENGTH" 2>/dev/null || true
+    else
+      local data=""
+      IFS= read -r data || true
+      printf '%s' "$data"
+    fi
+  else
+    printf '%s' "${QUERY_STRING:-}"
+  fi
+}
+
+body="$(read_cgi_body)"
 
 url_decode() {
   local data="${1//+/ }"
