@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Администрирование Wi-Fi портала</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://unpkg.com/milligram@1.4.1/dist/milligram.min.css">
+    <style>
+        body { padding: 2rem; }
+        .container { max-width: 720px; margin: auto; }
+        pre { background: #f4f4f4; padding: 1rem; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Панель управления</h2>
+    <section>
+        <h4>Текущие параметры</h4>
+        <button id="refresh">Обновить</button>
+        <pre id="settings">{}</pre>
+    </section>
+    <section>
+        <h4>Обновить код дня</h4>
+        <form id="update-form">
+            <label for="new_code">Новый код</label>
+            <input id="new_code" name="code" type="text" required maxlength="32">
+            <label for="duration">Длительность (мин)</label>
+            <input id="duration" name="duration" type="number" min="5" max="720" required>
+            <button class="button-primary" type="submit">Сохранить</button>
+        </form>
+    </section>
+    <section>
+        <h4>Управление сессиями</h4>
+        <button id="clear">Очистить активные подключения</button>
+    </section>
+    <section>
+        <h4>Управление NoDogSplash</h4>
+        <button data-action="start" class="nds">Запустить</button>
+        <button data-action="stop" class="nds">Остановить</button>
+    </section>
+    <section>
+        <h4>Белый список MAC</h4>
+        <form id="mac-form">
+            <label for="mac">MAC адрес</label>
+            <input id="mac" name="mac" type="text" pattern="^[0-9A-Fa-f:]{17}$" required>
+            <button type="submit">Добавить</button>
+        </form>
+    </section>
+    <section>
+        <h4>Статус</h4>
+        <button id="status">Получить статус</button>
+        <pre id="status-output">{}</pre>
+    </section>
+    <p id="message"></p>
+</div>
+<script>
+async function jsonRequest(url, options) {
+    const response = await fetch(url, Object.assign({ headers: { 'Content-Type': 'application/json' } }, options));
+    return response.json();
+}
+function notify(text, isError) {
+    const msg = document.getElementById('message');
+    msg.textContent = text;
+    msg.style.color = isError ? '#d0021b' : '#007f00';
+}
+async function refresh() {
+    const data = await fetch('/api/admin/get').then(r => r.json());
+    document.getElementById('settings').textContent = JSON.stringify(data, null, 2);
+    if (data.code) {
+        document.getElementById('new_code').value = data.code;
+    }
+    if (data.duration) {
+        document.getElementById('duration').value = data.duration;
+    }
+}
+document.getElementById('refresh').addEventListener('click', refresh);
+document.getElementById('update-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const body = {
+        code: document.getElementById('new_code').value.trim(),
+        duration: Number(document.getElementById('duration').value)
+    };
+    const data = await jsonRequest('/api/admin/update', { method: 'POST', body: JSON.stringify(body) });
+    notify(data.msg || 'Обновлено', !data.ok);
+    refresh();
+});
+document.getElementById('clear').addEventListener('click', async () => {
+    const data = await jsonRequest('/api/admin/clear', { method: 'POST', body: '{}' });
+    notify(data.msg || 'Сессии очищены', !data.ok);
+});
+document.querySelectorAll('.nds').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+        const action = btn.dataset.action;
+        const data = await jsonRequest('/api/admin/nds', { method: 'POST', body: JSON.stringify({ action }) });
+        notify(data.msg || 'Операция выполнена', !data.ok);
+    });
+});
+document.getElementById('mac-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const mac = document.getElementById('mac').value.trim();
+    const data = await jsonRequest('/api/admin/mac_add', { method: 'POST', body: JSON.stringify({ mac }) });
+    notify(data.msg || 'MAC добавлен', !data.ok);
+});
+document.getElementById('status').addEventListener('click', async () => {
+    const data = await fetch('/api/admin/status').then(r => r.json());
+    document.getElementById('status-output').textContent = JSON.stringify(data, null, 2);
+});
+refresh();
+</script>
+</body>
+</html>
