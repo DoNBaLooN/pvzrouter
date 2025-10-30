@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Wi-Fi Авторизация</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://unpkg.com/milligram@1.4.1/dist/milligram.min.css">
+    <style>
+        body { background: #f8f9fb; padding: 2rem; }
+        .container { max-width: 480px; margin: auto; }
+        .error { color: #d0021b; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Портал доступа</h2>
+    <p>Введите действующий код дня, чтобы получить интернет-доступ.</p>
+    <form id="auth-form">
+        <label for="code">Код дня</label>
+        <input id="code" name="code" type="text" minlength="1" maxlength="32" required>
+        <button class="button-primary" type="submit">Войти</button>
+    </form>
+    <p id="message" class="error" hidden></p>
+</div>
+<script>
+const form = document.getElementById('auth-form');
+const message = document.getElementById('message');
+form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    message.hidden = true;
+    const response = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: form.code.value.trim() })
+    });
+    const data = await response.json();
+    if (data.ok) {
+        window.location.href = 'success.html';
+    } else {
+        message.textContent = data.msg || 'Ошибка авторизации';
+        message.hidden = false;
+        window.location.href = 'denied.html?msg=' + encodeURIComponent(message.textContent);
+    }
+});
+</script>
+</body>
+</html>
