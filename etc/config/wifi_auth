@@ -1,5 +1,0 @@
-config auth 'settings'
-    option code '5921'
-    option duration '60'
-    option enabled '0'
-    option updated '2025-10-29 10:00'
