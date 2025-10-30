@@ -7,11 +7,17 @@ SESSIONS_FILE="/tmp/active_sessions.txt"
 LOG_TAG="wifi_auth"
 
 read_request_body() {
-  if [ "$REQUEST_METHOD" = "POST" ]; then
-    read -r body
-    echo "$body"
+  local method="${REQUEST_METHOD:-GET}"
+  if [ "$method" = "POST" ]; then
+    if [ -n "${CONTENT_LENGTH:-}" ]; then
+      dd bs=1 count="$CONTENT_LENGTH" 2>/dev/null || true
+    else
+      local data=""
+      IFS= read -r data || true
+      printf '%s' "$data"
+    fi
   else
-    echo ""
+    printf '%s' "${QUERY_STRING:-}"
   fi
 }
 
