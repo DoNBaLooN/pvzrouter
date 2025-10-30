@@ -2,6 +2,10 @@
 
 set -eu
 
+# Ensure system utilities like uci and init scripts are available when the
+# script is executed by the web server (which may have a reduced PATH).
+export PATH="/sbin:/usr/sbin:/bin:/usr/bin"
+
 CONFIG="wifi_auth.portal"
 SESSIONS_FILE="/tmp/active_sessions.txt"
 
