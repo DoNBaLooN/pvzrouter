@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <title>Панель управления порталом</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f8fafc;
+            margin: 0;
+            padding: 0;
+            color: #1f2937;
+        }
+        header {
+            background: #1d4ed8;
+            color: #ffffff;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        main {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 1rem 3rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+        section {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
+            padding: 1.5rem;
+        }
+        h2 {
+            margin-top: 0;
+            font-size: 1.3rem;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin: 1rem 0 0.5rem;
+        }
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        button {
+            margin-top: 1.25rem;
+            padding: 0.75rem 1.5rem;
+            background: #2563eb;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.2s ease-in-out;
+        }
+        button:hover {
+            background: #1e3a8a;
+        }
+        .secondary {
+            background: #0f172a;
+        }
+        form + form {
+            margin-top: 1rem;
+        }
+        p.note {
+            font-size: 0.9rem;
+            color: #475569;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>Панель управления офлайн-порталом</h1>
+    <p>Маршрутизатор: 10.0.0.1</p>
+</header>
+<main>
+    <section>
+        <h2>Параметры кода</h2>
+        <form method="post" action="/cgi-bin/update_code.sh">
+            <label for="new-code">Новый код дня</label>
+            <input id="new-code" type="text" name="code" required placeholder="Например, 9876">
+            <label for="new-duration">Длительность выдачи (мин.)</label>
+            <input id="new-duration" type="number" min="1" max="720" name="duration" required value="60">
+            <button type="submit">Сохранить</button>
+        </form>
+        <p class="note">После сохранения новый код начнёт действовать немедленно.</p>
+    </section>
+    <section>
+        <h2>Управление сессиями</h2>
+        <form method="post" action="/cgi-bin/clear_sessions.sh">
+            <button type="submit" class="secondary">Отключить всех пользователей</button>
+        </form>
+        <form method="post" action="/cgi-bin/nds_control.sh">
+            <input type="hidden" name="action" value="restart">
+            <button type="submit">Перезапустить NoDogSplash</button>
+        </form>
+    </section>
+    <section>
+        <h2>Управление порталом</h2>
+        <form method="post" action="/cgi-bin/nds_control.sh">
+            <input type="hidden" name="action" value="enable">
+            <button type="submit">Включить портал</button>
+        </form>
+        <form method="post" action="/cgi-bin/nds_control.sh">
+            <input type="hidden" name="action" value="disable">
+            <button type="submit" class="secondary">Выключить портал</button>
+        </form>
+    </section>
+    <section>
+        <h2>Белый список администратора</h2>
+        <form method="post" action="/cgi-bin/nds_control.sh">
+            <label for="admin-mac">MAC-адрес администратора</label>
+            <input id="admin-mac" type="text" name="mac" required placeholder="AA:BB:CC:DD:EE:FF">
+            <input type="hidden" name="action" value="add_admin_mac">
+            <button type="submit">Добавить в постоянный доступ</button>
+        </form>
+        <p class="note">Адрес будет добавлен в белый список и сохранён в конфигурации.</p>
+    </section>
+</main>
+</body>
+</html>
